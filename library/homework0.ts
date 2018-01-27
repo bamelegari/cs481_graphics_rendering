@@ -1,5 +1,3 @@
-//import fs = require('fs');
-
 class StaticVertexBufferObject {
     public buffer: WebGLBuffer | null = null;
     private gl: WebGLRenderingContext | null = null;
@@ -28,6 +26,63 @@ class StaticVertexBufferObject {
         gl.disableVertexAttribArray(vertexLoc);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
     }
+}
+
+class ShaderLoader {
+	private vertLoaded: boolean = false;
+	private fragLoaded: boolean = false;
+	private vertFailed: boolean = false;
+	private fragFailed: boolean = false;
+	public vertShaderSource: string = "";
+	public fragShaderSource: string = "";
+	get failed(): boolean { return this.vertFailed || this.fragFailed; }
+	get loaded(): boolean { return this.vertLoaded && this.fragLoaded; }
+
+	constructor(public vertShaderUrl: string, public fragShaderUrl: string, 
+				private callbackfn: (vertShaderSource: string,
+									fragShaderSource: string) => void) {
+		let self = this;
+		let vertXHR: XMLHttpRequest = new XMLHttpRequest();
+		vertXHR.addEventListener("load", (e) => {
+			self.vertShaderSource = vertXHR.responseText;
+			self.vertLoaded = true;
+			if (this.loaded) {
+				self.callbackfn(self.vertShaderSource, self.fragShaderSource);
+			}
+		});
+
+		vertXHR.addEventListener("abort", (e) => {
+			self.vertFailed = true;
+			console.error("unable to GET " + vertShaderUrl);
+		});
+
+		vertXHR.addEventListener("error", (e) => {
+			self.vertFailed = true;
+			console.error("unable to GET " + vertShaderUrl);
+		});
+		vertXHR.open("GET", vertShaderUrl);
+		vertXHR.send();
+
+		let fragXHR: XMLHttpRequest = new XMLHttpRequest();
+
+		fragXHR.addEventListener("load", (e) => {
+			self.fragShaderSource = fragXHR.responseText;
+			self.fragLoaded = true;
+			if (this.loaded) {
+				self.callbackfn(self.vertShaderSource, self.fragShaderSource);
+			}
+		});
+		fragXHR.addEventListener("abort", (e) => {
+			self.fragFailed = true;
+			console.error("unable to GET " + fragShaderUrl);
+		});
+		fragXHR.addEventListener("error", (e) => {
+			self.vertFailed = true;
+			console.error("unable to GET " + fragShaderUrl);
+		});
+		fragXHR.open("GET", fragShaderUrl);
+		fragXHR.send();
+	}
 }
 
 class ShaderProgram {
@@ -127,15 +182,17 @@ class homework0 {
         this.vbo = new StaticVertexBufferObject(gl, gl.TRIANGLES, new Float32Array([
             -1, -1, 0, 1,
             1, -1, 0, 1,
-            0, 1, 0, 1
+            0, 1, 0, 1,
+            1, 1, 0, 1,
+            -1, 1, 0, 1,
+            0, -1, 0, 1,
         ]));
 
-     //    this.program = new ShaderProgram(gl, 
-    	// fs.readFileSync("rtr-homework0-desc.vert"),
-    	// fs.readFileSync("rtr-homework0-desc.frag"));
-        this.program = new ShaderProgram(gl,
-            "attribute vec4 position; void main(){ gl_Position = position; }",
-            "void main() { gl_FragColor = vec4(0.4, 0.3, 0.2, 1.0); }");
+        var self = this;
+        var loader = new ShaderLoader("rtr-homework0-desc.vert", "rtr-homework0-desc.frag", 
+        	function(vertShaderSource: string, fragShaderSource: string) {
+        		self.program = new ShaderProgram(gl, vertShaderSource, fragShaderSource);
+        });
     }
 
     display(t: number): void {
