@@ -165,9 +165,9 @@ class homework0 {
     }
 
     run(): void {
-    if (!this.gl) return;
-    this.init(this.gl);
-    this.mainloop(0);
+        if (!this.gl) return;
+        this.init(this.gl);
+        this.mainloop(0);
     }
 
     mainloop(timestamp: number): void {
